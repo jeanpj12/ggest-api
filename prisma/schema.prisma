@@ -1,0 +1,131 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Roles {
+  ADMIN
+  USER
+}
+
+enum ServiceStatus {
+  BUDGETED
+  IN_PROGRESS
+  COMPLETED
+  LATE
+  INVOICED
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  PIX
+  BOLETO
+  TRANSFER
+}
+
+enum Currency {
+  USD
+  BRL
+  EUR
+}
+
+model User {
+  id           String   @id @default(uuid())
+  firstName    String   @map("first_name")
+  lastName     String   @map("last_name")
+  role         Roles    @default(USER)
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  Costumers      Costumer[]
+  Services       Service[]
+  ServiceBilling ServiceBilling[]
+  UserSettings   UserSettings?
+
+  @@index([email])
+  @@map("users")
+}
+
+model UserSettings {
+  id       String   @id @default(uuid())
+  userId   String   @unique @map("user_id")
+  pixKey   String?  @map("pix_key")
+  currency Currency @default(BRL)
+  darkMode Boolean  @default(false)
+
+  User User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("user_settings")
+}
+
+model Costumer {
+  id         String  @id @default(uuid())
+  name       String
+  company    String?
+  providerId String  @map("provider_id")
+  email      String?
+  phone      String?
+
+  ProviderId User @relation(fields: [providerId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  ServiceBilling ServiceBilling[]
+
+  @@map("costumers")
+}
+
+model Service {
+  id          String  @id @default(uuid())
+  name        String
+  description String
+  providerId  String  @map("provider_id")
+  terms       String?
+  price       Decimal @default(0)
+
+  ProviderId User @relation(fields: [providerId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  ServiceBilling ServiceBilling[]
+
+  @@map("services")
+}
+
+model ServiceBilling {
+  id            String         @id @default(uuid())
+  costumerId    String         @map("costumer_id")
+  providerId    String         @map("provider_id")
+  serviceId     String         @map("service_id")
+  price         Decimal
+  dueDate       DateTime
+  serviceStatus ServiceStatus  @default(BUDGETED) @map("service_status")
+  paymentMethod PaymentMethod? @default(PIX)
+
+  ServiceId  Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  CostumerId Costumer @relation(fields: [costumerId], references: [id], onDelete: Cascade)
+  ProviderId User     @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([costumerId, serviceStatus])
+  @@map("services_billing")
+}
