@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  pg:
+    image: bitnami/postgresql:latest
+    restart: always
+    ports:
+      - '5433:5433'
+    environment:
+      POSTGRES_USER: ggest
+      POSTGRES_PASSWORD: ggest
+      POSTGRES_DB: ggest
